@@ -78,11 +78,40 @@
       outline: none;
       box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
     }
+
+    /* Bottom Nav Animation */
+    .bottom-nav {
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .nav-item {
+      transition: all 0.3s ease;
+    }
+
+    .nav-item.active {
+      transform: translateY(-8px) scale(1.15);
+    }
+
+    .nav-item.active .icon-bg {
+      background: var(--gradient);
+      box-shadow: 0 10px 25px -10px rgba(16, 185, 129, 0.4);
+    }
+
+    .nav-item .label {
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.3s ease;
+    }
+
+    .nav-item.active .label {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
-<body class="antialiased">
+<body class="antialiased pb-20 md:pb-0">
 
-  <!-- Header / Navbar -->
+  <!-- Header / Navbar (Desktop) -->
   <header class="fixed top-0 left-0 right-0 z-50 glass transition-all duration-300">
     <nav class="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
       <div class="text-3xl font-extrabold gradient-text tracking-tight">
@@ -120,7 +149,7 @@
     </div>
   </section>
 
-  <!-- Ride Request Form (Uber-style) -->
+  <!-- Ride Request Form -->
   <section class="px-6 lg:px-8 pb-16 md:pb-24 -mt-16 md:-mt-24 relative z-10">
     <div class="max-w-lg mx-auto">
       <div class="glass rounded-3xl shadow-2xl overflow-hidden">
@@ -129,44 +158,26 @@
         </div>
 
         <div class="p-6 space-y-5 ride-form">
-          <!-- Pickup Location -->
           <div class="relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
               <span class="material-icons">location_on</span>
             </div>
-            <input 
-              type="text" 
-              placeholder="Enter pickup location" 
-              class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]"
-            />
+            <input type="text" placeholder="Enter pickup location" class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]" />
           </div>
 
-          <!-- Dropoff Location -->
           <div class="relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
               <span class="material-icons">flag</span>
             </div>
-            <input 
-              type="text" 
-              placeholder="Enter destination" 
-              class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]"
-            />
+            <input type="text" placeholder="Enter destination" class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]" />
           </div>
 
-          <!-- Ride Types -->
           <div class="grid grid-cols-3 gap-3 pt-4">
-            <button class="py-3 px-4 rounded-xl border-2 border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] font-medium hover:bg-[var(--accent)] hover:text-white transition">
-              Economy
-            </button>
-            <button class="py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">
-              Comfort
-            </button>
-            <button class="py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">
-              MaxiXL
-            </button>
+            <button class="py-3 px-4 rounded-xl border-2 border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] font-medium hover:bg-[var(--accent)] hover:text-white transition">Economy</button>
+            <button class="py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">Comfort</button>
+            <button class="py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">MaxiXL</button>
           </div>
 
-          <!-- Submit Button -->
           <button class="w-full py-5 mt-6 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-600 text-white font-bold text-xl shadow-lg hover:shadow-2xl hover:shadow-emerald-500/40 transform hover:scale-[1.02] transition-all">
             Request Maxi
           </button>
@@ -179,7 +190,7 @@
     </div>
   </section>
 
-  <!-- Features -->
+  <!-- Features (shortened labels for mobile space) -->
   <section id="features" class="py-20 px-6 lg:px-8 bg-gradient-to-b from-transparent via-slate-50/40 to-transparent dark:via-slate-900/30">
     <div class="max-w-7xl mx-auto">
       <div class="text-center mb-16">
@@ -231,7 +242,7 @@
   </section>
 
   <!-- Footer -->
-  <footer class="border-t border-[var(--border)] py-16 px-6 lg:px-8">
+  <footer class="border-t border-[var(--border)] py-16 px-6 lg:px-8 md:mt-12">
     <div class="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
       <div>
         <div class="text-3xl font-extrabold gradient-text mb-4">Maxi</div>
@@ -273,7 +284,39 @@
     </div>
   </footer>
 
+  <!-- Mobile Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+    <div class="glass mx-4 mb-4 md:mb-6 rounded-2xl shadow-2xl border border-[var(--border)] overflow-hidden">
+      <div class="flex items-center justify-around py-3 px-6 bottom-nav">
+        <!-- Home -->
+        <button class="nav-item flex flex-col items-center active" onclick="setActive(this)">
+          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all">
+            <span class="material-icons text-2xl">home</span>
+          </div>
+          <span class="label text-xs font-medium">Home</span>
+        </button>
+
+        <!-- Activity -->
+        <button class="nav-item flex flex-col items-center" onclick="setActive(this)">
+          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all">
+            <span class="material-icons text-2xl">history</span>
+          </div>
+          <span class="label text-xs font-medium">Activity</span>
+        </button>
+
+        <!-- Account -->
+        <button class="nav-item flex flex-col items-center" onclick="setActive(this)">
+          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all">
+            <span class="material-icons text-2xl">person</span>
+          </div>
+          <span class="label text-xs font-medium">Account</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
   <script>
+    // Dark mode toggle
     const darkToggle = document.getElementById('dark-toggle');
     const html = document.documentElement;
 
@@ -288,6 +331,18 @@
       html.classList.toggle('dark');
       localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
     });
+
+    // Bottom nav active state
+    function setActive(element) {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        item.querySelector('.icon-bg').style.background = '';
+        item.querySelector('.icon-bg').style.boxShadow = '';
+      });
+      element.classList.add('active');
+      // Optional: add gradient to active icon bg
+      element.querySelector('.icon-bg').style.background = 'var(--gradient)';
+    }
   </script>
 </body>
 </html>
