@@ -7,6 +7,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Leaflet CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Google Places API (replace YOUR_API_KEY with real key) -->
+  <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
 
   <!-- Firebase SDK -->
   <script type="module">
@@ -70,61 +77,64 @@
       background-clip: text;
     }
 
-    .ride-form input, .ride-form button {
-      transition: all 0.2s ease;
+    #map { height: 70vh; min-height: 500px; z-index: 1; }
+    .leaflet-container { font-size: 14px; }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 1; }
+      70% { transform: scale(1.4); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0; }
     }
 
-    .ride-form input:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+    .pulse-ring {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.5);
+      animation: pulse 2.5s infinite;
+      pointer-events: none;
     }
 
-    /* Bottom Nav Animation */
-    .bottom-nav {
-      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .driver-dot {
+      width: 14px;
+      height: 14px;
+      background: #ef4444;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+      animation: pulseDriver 3s infinite;
     }
 
-    .nav-item {
-      transition: all 0.3s ease;
+    @keyframes pulseDriver {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.3); }
     }
 
-    .nav-item.active {
-      transform: translateY(-8px) scale(1.15);
-    }
+    .bottom-nav { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .nav-item { transition: all 0.3s ease; }
+    .nav-item.active { transform: translateY(-8px) scale(1.15); }
+    .nav-item.active .icon-bg { background: var(--gradient); box-shadow: 0 10px 25px -10px rgba(16, 185, 129, 0.4); }
+    .nav-item .label { opacity: 0; transform: translateY(8px); transition: all 0.3s ease; }
+    .nav-item.active .label { opacity: 1; transform: translateY(0); }
 
-    .nav-item.active .icon-bg {
-      background: var(--gradient);
-      box-shadow: 0 10px 25px -10px rgba(16, 185, 129, 0.4);
-    }
-
-    .nav-item .label {
-      opacity: 0;
-      transform: translateY(8px);
-      transition: all 0.3s ease;
-    }
-
-    .nav-item.active .label {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .pac-container { z-index: 9999 !important; }
   </style>
 </head>
-<body class="antialiased pb-20 md:pb-0">
+<body class="antialiased pb-24 md:pb-0">
 
-  <!-- Header / Navbar (Desktop) -->
+  <!-- Header -->
   <header class="fixed top-0 left-0 right-0 z-50 glass transition-all duration-300">
     <nav class="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
-      <div class="text-3xl font-extrabold gradient-text tracking-tight">
-        Maxi
-      </div>
-
+      <div class="text-3xl font-extrabold gradient-text tracking-tight">Maxi</div>
       <div class="hidden md:flex items-center space-x-10 text-sm font-medium">
         <a href="#ride" class="hover:text-[var(--accent)] transition-colors">Ride</a>
         <a href="#drive" class="hover:text-[var(--accent)] transition-colors">Drive</a>
         <a href="#features" class="hover:text-[var(--accent)] transition-colors">Features</a>
         <a href="#cities" class="hover:text-[var(--accent)] transition-colors">Cities</a>
       </div>
-
       <div class="flex items-center gap-4">
         <button id="dark-toggle" title="Toggle dark mode" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
           <span class="material-icons">dark_mode</span>
@@ -136,179 +146,93 @@
     </nav>
   </header>
 
-  <!-- Hero -->
-  <section class="pt-28 pb-12 md:pt-40 md:pb-20 px-6 lg:px-8 text-center relative overflow-hidden">
-    <div class="max-w-5xl mx-auto">
-      <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight mb-6">
+  <!-- Hero + Ride Form -->
+  <section class="relative z-20 pt-28 pb-6 md:pt-40 md:pb-0 px-6 lg:px-8">
+    <div class="max-w-5xl mx-auto text-center">
+      <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight mb-4">
         Go anywhere with <span class="gradient-text">Maxi</span>
       </h1>
-      
-      <p class="text-xl md:text-2xl text-[var(--text-secondary)] max-w-3xl mx-auto mb-10">
-        Request a ride in minutes — 24/7, anywhere in Durban and beyond.
+      <p class="text-xl md:text-2xl text-[var(--text-secondary)] max-w-3xl mx-auto mb-8">
+        Request a ride in minutes — 24/7 across Durban and beyond
       </p>
     </div>
-  </section>
 
-  <!-- Ride Request Form -->
-  <section class="px-6 lg:px-8 pb-16 md:pb-24 -mt-16 md:-mt-24 relative z-10">
-    <div class="max-w-lg mx-auto">
+    <div class="max-w-lg mx-auto relative z-30 -mb-32 md:-mb-40">
       <div class="glass rounded-3xl shadow-2xl overflow-hidden">
         <div class="bg-gradient-to-r from-emerald-600 to-blue-600 p-6 text-white">
-          <h2 class="text-2xl font-bold">Where are you going?</h2>
+          <h2 class="text-2xl font-bold">Where to?</h2>
         </div>
-
         <div class="p-6 space-y-5 ride-form">
           <div class="relative">
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <span class="material-icons">location_on</span>
-            </div>
-            <input type="text" placeholder="Enter pickup location" class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]" />
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><span class="material-icons">location_on</span></div>
+            <input id="pickup-input" type="text" placeholder="Current location or enter pickup" class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]" />
           </div>
-
           <div class="relative">
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <span class="material-icons">flag</span>
-            </div>
-            <input type="text" placeholder="Enter destination" class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]" />
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><span class="material-icons">flag</span></div>
+            <input id="dropoff-input" type="text" placeholder="Enter destination" class="w-full pl-12 pr-4 py-4 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-gray-300 dark:border-slate-600 text-lg focus:border-[var(--accent)]" />
           </div>
-
-          <div class="grid grid-cols-3 gap-3 pt-4">
-            <button class="py-3 px-4 rounded-xl border-2 border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] font-medium hover:bg-[var(--accent)] hover:text-white transition">Economy</button>
-            <button class="py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">Comfort</button>
-            <button class="py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">MaxiXL</button>
+          <div class="grid grid-cols-3 gap-3 pt-2">
+            <button class="py-3 rounded-xl border-2 border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] font-medium hover:bg-[var(--accent)] hover:text-white transition active">Economy</button>
+            <button class="py-3 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">Comfort</button>
+            <button class="py-3 rounded-xl border border-gray-300 dark:border-slate-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition">MaxiXL</button>
           </div>
-
-          <button class="w-full py-5 mt-6 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-600 text-white font-bold text-xl shadow-lg hover:shadow-2xl hover:shadow-emerald-500/40 transform hover:scale-[1.02] transition-all">
+          <div id="eta-price-overlay" class="text-center text-sm text-[var(--text-secondary)] py-2 hidden">
+            Estimated: <span id="eta">4 min</span> • R<span id="price">45-60</span>
+          </div>
+          <button class="w-full py-5 mt-2 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-600 text-white font-bold text-xl shadow-lg hover:shadow-2xl hover:shadow-emerald-500/40 transform hover:scale-[1.02] transition-all">
             Request Maxi
           </button>
-
-          <p class="text-center text-sm text-[var(--text-secondary)] pt-2">
-            Or continue in the app for real-time pricing & ETA
-          </p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Features (shortened labels for mobile space) -->
-  <section id="features" class="py-20 px-6 lg:px-8 bg-gradient-to-b from-transparent via-slate-50/40 to-transparent dark:via-slate-900/30">
+  <!-- Map with real-time mock drivers & ETA/price overlay -->
+  <section class="relative z-10 h-[70vh] md:h-[90vh] -mt-32 md:-mt-64">
+    <div id="map"></div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-20 px-6 lg:px-8 bg-gradient-to-b from-transparent via-slate-50/40 to-transparent dark:via-slate-900/30 relative z-20">
     <div class="max-w-7xl mx-auto">
       <div class="text-center mb-16">
         <h2 class="text-4xl md:text-5xl font-bold mb-4">Why ride with Maxi?</h2>
-        <p class="text-xl text-[var(--text-secondary)] max-w-3xl mx-auto">
-          Safe, reliable rides in minutes — day or night
-        </p>
+        <p class="text-xl text-[var(--text-secondary)] max-w-3xl mx-auto">Safe • Fast • Affordable</p>
       </div>
-
-      <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
-        <div class="glass rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white mb-6">
-            <span class="material-icons text-3xl">speed</span>
-          </div>
-          <h3 class="text-2xl font-bold mb-3">Fast Pickups</h3>
-          <p class="text-[var(--text-secondary)]">Average wait < 5 min in Durban. Live tracking.</p>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="glass rounded-3xl p-8 hover:shadow-2xl transition-all hover:-translate-y-2">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white mb-6"><span class="material-icons text-3xl">speed</span></div>
+          <h3 class="text-2xl font-bold mb-3">Arrives Fast</h3>
+          <p class="text-[var(--text-secondary)]">Usually under 5 minutes in Durban</p>
         </div>
-
-        <div class="glass rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white mb-6">
-            <span class="material-icons text-3xl">shield</span>
-          </div>
-          <h3 class="text-2xl font-bold mb-3">Your Safety First</h3>
-          <p class="text-[var(--text-secondary)]">Driver verification, ride sharing, emergency button.</p>
+        <div class="glass rounded-3xl p-8 hover:shadow-2xl transition-all hover:-translate-y-2">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white mb-6"><span class="material-icons text-3xl">shield</span></div>
+          <h3 class="text-2xl font-bold mb-3">Safety First</h3>
+          <p class="text-[var(--text-secondary)]">Share trip • Verified drivers • 24/7 support</p>
         </div>
-
-        <div class="glass rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white mb-6">
-            <span class="material-icons text-3xl">payments</span>
-          </div>
-          <h3 class="text-2xl font-bold mb-3">Easy Payments</h3>
-          <p class="text-[var(--text-secondary)]">Card, cash, SnapScan, Ozow — pay your way.</p>
+        <div class="glass rounded-3xl p-8 hover:shadow-2xl transition-all hover:-translate-y-2">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white mb-6"><span class="material-icons text-3xl">payments</span></div>
+          <h3 class="text-2xl font-bold mb-3">Flexible Payment</h3>
+          <p class="text-[var(--text-secondary)]">Card • Cash • Instant EFT • SnapScan</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- CTA Banner -->
-  <section class="py-24 px-6 lg:px-8 text-center">
-    <div class="max-w-4xl mx-auto glass rounded-3xl p-12 md:p-16">
-      <h2 class="text-4xl md:text-5xl font-bold mb-6">Ready when you are</h2>
-      <p class="text-xl text-[var(--text-secondary)] mb-10 max-w-2xl mx-auto">
-        Open Maxi and get a ride in just a few taps.
-      </p>
-      <a href="#" class="inline-block px-12 py-6 rounded-full bg-gradient-to-r from-emerald-500 to-blue-600 text-white font-bold text-2xl hover:shadow-2xl hover:shadow-emerald-500/40 transition-all transform hover:scale-105">
-        Download Maxi →
-      </a>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="border-t border-[var(--border)] py-16 px-6 lg:px-8 md:mt-12">
-    <div class="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
-      <div>
-        <div class="text-3xl font-extrabold gradient-text mb-4">Maxi</div>
-        <p class="text-[var(--text-secondary)]">Go anywhere, anytime.</p>
-      </div>
-
-      <div>
-        <h4 class="font-semibold mb-4">Riding</h4>
-        <ul class="space-y-3 text-[var(--text-secondary)]">
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Request a ride</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Ride options</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Cities</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Airports</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="font-semibold mb-4">Driving</h4>
-        <ul class="space-y-3 text-[var(--text-secondary)]">
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Become a driver</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Driver app</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Earnings</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="font-semibold mb-4">Company</h4>
-        <ul class="space-y-3 text-[var(--text-secondary)]">
-          <li><a href="#" class="hover:text-[var(--accent)] transition">About Maxi</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Safety</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Help</a></li>
-          <li><a href="#" class="hover:text-[var(--accent)] transition">Legal</a></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="mt-16 pt-8 border-t border-[var(--border)] text-center text-sm text-[var(--text-secondary)]">
-      © 2026 Maxi. All rights reserved.
-    </div>
-  </footer>
-
-  <!-- Mobile Bottom Navigation -->
+  <!-- Mobile Bottom Nav -->
   <nav class="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-    <div class="glass mx-4 mb-4 md:mb-6 rounded-2xl shadow-2xl border border-[var(--border)] overflow-hidden">
+    <div class="glass mx-4 mb-6 rounded-2xl shadow-2xl border border-[var(--border)] overflow-hidden">
       <div class="flex items-center justify-around py-3 px-6 bottom-nav">
-        <!-- Home -->
         <button class="nav-item flex flex-col items-center active" onclick="setActive(this)">
-          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all">
-            <span class="material-icons text-2xl">home</span>
-          </div>
+          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1"><span class="material-icons text-2xl">home</span></div>
           <span class="label text-xs font-medium">Home</span>
         </button>
-
-        <!-- Activity -->
         <button class="nav-item flex flex-col items-center" onclick="setActive(this)">
-          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all">
-            <span class="material-icons text-2xl">history</span>
-          </div>
+          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1"><span class="material-icons text-2xl">history</span></div>
           <span class="label text-xs font-medium">Activity</span>
         </button>
-
-        <!-- Account -->
         <button class="nav-item flex flex-col items-center" onclick="setActive(this)">
-          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all">
-            <span class="material-icons text-2xl">person</span>
-          </div>
+          <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center mb-1"><span class="material-icons text-2xl">person</span></div>
           <span class="label text-xs font-medium">Account</span>
         </button>
       </div>
@@ -316,33 +240,147 @@
   </nav>
 
   <script>
-    // Dark mode toggle
+    // Dark mode
     const darkToggle = document.getElementById('dark-toggle');
     const html = document.documentElement;
-
-    if (localStorage.theme === 'dark' || 
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
     }
-
     darkToggle.addEventListener('click', () => {
       html.classList.toggle('dark');
       localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+      updateMapStyle();
     });
 
-    // Bottom nav active state
-    function setActive(element) {
-      document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        item.querySelector('.icon-bg').style.background = '';
-        item.querySelector('.icon-bg').style.boxShadow = '';
-      });
-      element.classList.add('active');
-      // Optional: add gradient to active icon bg
-      element.querySelector('.icon-bg').style.background = 'var(--gradient)';
+    // Bottom nav
+    function setActive(el) {
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+      el.querySelector('.icon-bg').style.background = 'var(--gradient)';
     }
+
+    // Map & features
+    let map, pickupMarker, routeLine, driverMarkers = [];
+
+    function addMockDrivers() {
+      // Clear old drivers
+      driverMarkers.forEach(m => map.removeLayer(m));
+      driverMarkers = [];
+
+      const durbanCenter = [-29.8587, 31.0218];
+      for (let i = 0; i < 8; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * 0.05 + 0.01;
+        const lat = durbanCenter[0] + Math.cos(angle) * dist;
+        const lng = durbanCenter[1] + Math.sin(angle) * dist;
+
+        const dot = L.divIcon({
+          className: '',
+          html: '<div class="driver-dot"></div>',
+          iconSize: [14, 14],
+          iconAnchor: [7, 7]
+        });
+
+        const marker = L.marker([lat, lng], { icon: dot }).addTo(map);
+        marker.bindPopup(`Driver nearby<br>ETA: ${Math.floor(Math.random() * 3 + 2)} min<br>Rating: 4.8 ★`);
+
+        driverMarkers.push(marker);
+      }
+    }
+
+    function initMap() {
+      if (map) map.remove();
+
+      map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView([-29.8587, 31.0218], 14);
+
+      const isDark = html.classList.contains('dark');
+      const tileUrl = isDark 
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+      L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+
+      // Pickup marker with pulse
+      pickupMarker = L.marker([-29.8587, 31.0218], {
+        icon: L.divIcon({
+          className: 'relative',
+          html: '<div class="w-10 h-10 bg-emerald-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center"><span class="material-icons text-white text-2xl">my_location</span></div><div class="pulse-ring"></div>',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
+        })
+      }).addTo(map);
+
+      // Mock route
+      const destination = [-29.8833, 31.0492];
+      routeLine = L.polyline([[-29.8587, 31.0218], destination], {
+        color: '#10b981',
+        weight: 6,
+        opacity: 0.85,
+        lineCap: 'round'
+      }).addTo(map);
+
+      // Add mock drivers
+      addMockDrivers();
+
+      // Refresh drivers every 8 seconds (mock real-time)
+      setInterval(addMockDrivers, 8000);
+    }
+
+    function updateMapStyle() {
+      initMap();
+    }
+
+    // Google Places Autocomplete
+    function initAutocomplete() {
+      const pickupInput = document.getElementById('pickup-input');
+      const dropoffInput = document.getElementById('dropoff-input');
+
+      const options = {
+        componentRestrictions: { country: 'za' }, // South Africa
+        types: ['geocode']
+      };
+
+      const pickupAutocomplete = new google.maps.places.Autocomplete(pickupInput, options);
+      const dropoffAutocomplete = new google.maps.places.Autocomplete(dropoffInput, options);
+
+      // Optional: Update map on place select (mock)
+      [pickupAutocomplete, dropoffAutocomplete].forEach(aut => {
+        aut.addListener('place_changed', () => {
+          const place = aut.getPlace();
+          if (place.geometry) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            map.setView([lat, lng], 15);
+            // Could update route/ETA here in real app
+            showMockETA();
+          }
+        });
+      });
+    }
+
+    function showMockETA() {
+      const etaEl = document.getElementById('eta-price-overlay');
+      document.getElementById('eta').textContent = `${Math.floor(Math.random() * 6 + 3)} min`;
+      document.getElementById('price').textContent = `${Math.floor(Math.random() * 30 + 40)}-${Math.floor(Math.random() * 40 + 60)}`;
+      etaEl.classList.remove('hidden');
+    }
+
+    // Init everything
+    window.onload = () => {
+      initMap();
+      if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+        initAutocomplete();
+      } else {
+        console.warn('Google Maps API not loaded - add your API key');
+      }
+    };
+
+    // Re-init map on dark mode change
+    const observer = new MutationObserver(updateMapStyle);
+    observer.observe(html, { attributes: true, attributeFilter: ['class'] });
   </script>
 </body>
 </html>
